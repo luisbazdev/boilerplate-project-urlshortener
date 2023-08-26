@@ -28,23 +28,30 @@ app.get("/api/hello", function (req, res) {
 // by incrementing by one the short_url field everytime
 const urls = [];
 
-app.get("/api/shorturl/:urlID", function (req, res) {
+app.get("/api/shorturl/:urlID", function(req, res) {
   const { urlID } = req.params;
   const url = urls.find((_url) => _url.short_url === urlID);
-  if (url) return res.redirect(`http://${url.original_url}`);
-  res.status(404).json({ error: "URL not found" });
+  if (url) return res.redirect(url.original_url);
+  res.status(400).json({ error: "invalid url" });
 });
 
-app.post("/api/shorturl", function (req, res) {
-  const { url } = req.body;
-  dns.lookup(url, (err, address, family) => {
-    if (err) return res.status(400).json({ error: "invalid url" });
-    const newObj = { original_url: url, short_url: `${urls.length}` };
-    urls.push(newObj);
-    res.json(newObj);
-  });
+app.post("/api/shorturl", function(req, res) {
+  try {
+    const { url } = req.body;
+    const hostname = url
+    .replace(/http[s]?\:\/\//, '')
+    .replace(/\/(.+)?/, '');
+    dns.lookup(hostname, (error, addresses) => {
+      if(!addresses) return res.status(200).json({ error: 'Invalid URL' });
+      const newObj = { original_url: url, short_url: `${urls.length}` };
+      urls.push(newObj);
+      res.json(newObj);
+    });
+  } catch (err) {
+    return res.status(200).json({ error: 'Invalid URL' });
+  }
 });
 
-app.listen(2020, function () {
+app.listen(port, function() {
   console.log(`Listening on port ${port}`);
 });
